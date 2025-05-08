@@ -59,5 +59,5 @@ print(f'Precisión del modelo en los datos de prueba: {accuracy}')
 # Imprimir el reporte de clasificación
 print(f'Reporte de clasificación:\n{report}')
 
-
+#segundo cambio
 
