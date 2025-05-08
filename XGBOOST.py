@@ -2,54 +2,62 @@ import pandas as pd
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import StandardScaler
 
-# Cargar los datos
-df = pd.read_csv('C:/Users/AhxelLuis/OneDrive - Universidad Peruana de Ciencias/Tesis_Serna_Zavala/PRUEBAS2/DATA/Pruebasdatacasifinal.csv')
+# Cargar y filtrar datos
+df = pd.read_csv('C:/Users/CARLOS SERNA/OneDrive - Universidad Peruana de Ciencias/Tesis_Serna_Zavala/PROYECTOTP/DATA/DATAPERU2CSV.csv')
+df = df[df['TIPO_VENTA'] == 'Venta Stock'].head(1000)  # Limitar a 1000 registros para prueba
 
-# Limpiar las columnas numéricas eliminando comas y convirtiéndolas a float
-columns_to_clean = ['CANT', 'COSTO', 'C_TOTAL', 'P_UNIT', 'V_TOTAL', 'UTILIDAD']
-for col in columns_to_clean:
-    df[col] = df[col].replace({',': ''}, regex=True).astype(float)
+# Limpiar datos numéricos
+for col in ['CANT', 'P_UNIT', 'V_TOTAL']:
+    df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', ''), errors='coerce')
 
-# Crear una variable objetivo ficticia para productos complementarios
-# Vamos a asumir que si el V_TOTAL > 1000, el producto es complementario
-df['comprar_complementario'] = (df['V_TOTAL'] > 1000).astype(int)
+# Eliminar columnas no necesarias
+columnas_a_eliminar = ['SOCIEDAD', 'N4', 'N41', 'Modulo', 'TIPO_CLIENTE.1', 'Lotes_y_cantidades', 'Moneda T/C', 'TIPO_VENTA']
+df.drop(columns=columnas_a_eliminar, inplace=True)
 
-# Seleccionar características y variable objetivo
-features = ['TIPO_VENTA', 'TIPO_CLIENTE', 'SKU', 'ARTICULO', 'CANT', 'COSTO', 'C_TOTAL', 'P_UNIT', 'V_TOTAL', 'UTILIDAD']
-X = df[features]
-y = df['comprar_complementario']
+# Limpiar datos
+df.dropna(inplace=True)
+df.drop_duplicates(inplace=True)
 
-# Dividir los datos en entrenamiento y prueba
+# Codificar variables categóricas
+le = LabelEncoder()
+df['SKU'] = le.fit_transform(df['SKU'])
+df['TIPO_CLIENTE'] = LabelEncoder().fit_transform(df['TIPO_CLIENTE'])
+df['ARTICULO'] = LabelEncoder().fit_transform(df['ARTICULO'])
+
+# Preparar datos
+X = df[['TIPO_CLIENTE', 'ARTICULO', 'CANT', 'P_UNIT', 'V_TOTAL']]
+y = df['SKU']
+
+# Normalizar variables numéricas
+scaler = StandardScaler()
+X[['CANT', 'P_UNIT', 'V_TOTAL']] = scaler.fit_transform(X[['CANT', 'P_UNIT', 'V_TOTAL']])
+
+# Dividir datos
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Preprocesamiento de datos: Normalizar las características numéricas y codificar las categóricas
-preprocessor = ColumnTransformer(
-    transformers=[
-        ('num', StandardScaler(), ['CANT', 'COSTO', 'C_TOTAL', 'P_UNIT', 'V_TOTAL', 'UTILIDAD']),  # Normalizar características numéricas
-        ('cat', OneHotEncoder(handle_unknown='ignore'), ['TIPO_VENTA', 'TIPO_CLIENTE', 'SKU', 'ARTICULO'])  # Codificación one-hot
-    ])
+# Entrenar modelo
+model = xgb.XGBClassifier(
+    objective='multi:softmax',
+    num_class=len(df['SKU'].unique()),
+    max_depth=3,
+    learning_rate=0.1,
+    n_estimators=50,
+    random_state=42
+)
 
-# Crear el pipeline para entrenar el modelo XGBoost
-model_pipeline = Pipeline(steps=[
-    ('preprocessor', preprocessor),
-    ('classifier', xgb.XGBClassifier(n_estimators=100, max_depth=10, random_state=42))  # XGBoost con 100 árboles y profundidad máxima de 10
-])
+model.fit(X_train, y_train)
 
-# Entrenar el modelo
-model_pipeline.fit(X_train, y_train)
-
-# Hacer predicciones con el conjunto de prueba
-y_pred = model_pipeline.predict(X_test)
-
-# Evaluar el modelo
+# Evaluar modelo
+y_pred = model.predict(X_test)
 accuracy = accuracy_score(y_test, y_pred)
-report = classification_report(y_test, y_pred)
+print(f'\nPrecisión del modelo: {accuracy:.2%}')
 
-# Imprimir los resultados
-print(f'Precisión del modelo en los datos de prueba: {accuracy}')
-print(f'Reporte de clasificación:\n{report}')
+# Imprimir reporte detallado
+print('\nReporte de clasificación:')
+print(classification_report(y_test, y_pred))
+
+
+
