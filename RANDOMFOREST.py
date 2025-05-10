@@ -8,7 +8,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 # Cargar los datos
-df = pd.read_csv('C:/Users/AhxelLuis/OneDrive - Universidad Peruana de Ciencias/Tesis_Serna_Zavala/PRUEBAS2/DATA/Pruebasdatacasifinal.csv')
+df = pd.read_csv('C:/Users/AhxelLuis/OneDrive - Universidad Peruana de Ciencias/Tesis_Serna_Zavala/PRUEBAS2/DATA/DATAPERU2CSV.csv')
 
 # Limpiar las columnas numéricas eliminando comas y convirtiéndolas a float
 columns_to_clean = ['CANT', 'COSTO', 'C_TOTAL', 'P_UNIT', 'V_TOTAL', 'UTILIDAD']
